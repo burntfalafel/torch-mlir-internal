@@ -1,0 +1,24 @@
+*.swp
+*.ll
+.cache/
+.vscode
+.env
+*.code-workspace
+.ipynb_checkpoints
+*.venv/
+mlir_venv/
+mlir_venv_src/
+
+/build/
+__pycache__
+
+.pytype
+
+
+# Pip artifacts.
+*.egg-info
+*.whl
+/wheelhouse
+
+# Bazel
+bazel-*
