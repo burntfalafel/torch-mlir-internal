@@ -1,0 +1,13 @@
+certifi==2022.5.18.1
+charset-normalizer==2.0.12
+cmake==3.22.4
+idna==3.3
+ninja==1.10.2.3
+numpy==1.23.0rc2
+Pillow==9.1.1
+pybind11==2.9.2
+requests==2.27.1
+torch==1.13.0.dev20220604+cpu
+torchvision==0.14.0.dev20220604+cpu
+typing_extensions==4.2.0
+urllib3==1.26.9
