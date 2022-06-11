@@ -20,6 +20,8 @@
 #include "mlir-c/Registration.h"
 #include "torch-mlir-c/Registration.h"
 
+#include <llvm/Support/raw_ostream.h>
+
 namespace py = pybind11;
 using namespace torch_mlir;
 
@@ -87,6 +89,7 @@ static void printDiagnostic(MlirDiagnostic diagnostic) {
   // https://pybind11.readthedocs.io/en/stable/advanced/pycpp/utilities.html
   py::print(ss.str(),
             py::arg("file") = py::module_::import("sys").attr("stderr"));
+  llvm::errs() << "DiagonsticEngine Output: " << ss.str() << "\n";
 }
 
 // Register a diagnostic handler that will redirect output to `sys.stderr`
@@ -122,6 +125,17 @@ ModuleBuilder::ModuleBuilder(pybind11::object contextObj)
 
   // Terminator will always be the first op of an empty module.
   terminator = mlirBlockGetFirstOperation(getBodyBlock());
+  if (mlirOperationIsNull(terminator) == false) {
+  std::stringstream ss;
+  ss << "error: ";
+  auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
+    auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
+    ssp->write(s.data, s.length);
+  };
+  emitError() << "Hello";
+  mlirOperationPrint(terminator, stringCallback, static_cast<void *>(&ss));
+  }
+  // llvm::errs() << "terminator value: " << terminator. << "\n";
 }
 
 torch::jit::StrongFunctionPtr
@@ -163,6 +177,14 @@ void ModuleBuilder::importModule(torch::jit::Module jitModule,
   mlirOperationSetAttributeByName(mlirModuleGetOperation(module),
                                   toMlirStringRef("torch.debug_module_name"),
                                   debugModuleNameAttr);
+  std::stringstream ss;
+  ss << "error: ";
+  auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
+    auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
+    ssp->write(s.data, s.length);
+  };
+  mlirAttributePrint(debugModuleNameAttr, stringCallback, static_cast<void *>(&ss));
+  
   importIValue(jitModule._ivalue(), mlirModuleGetBody(module),
                mlirModuleGetContext(module), *classAnnotator);
 }

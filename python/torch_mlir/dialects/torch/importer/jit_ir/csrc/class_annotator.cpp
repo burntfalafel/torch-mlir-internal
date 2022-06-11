@@ -180,6 +180,8 @@ static void fillArgAnnotations(MethodAnnotation &methodAnnotation,
       continue;
     }
     auto tuple = py::cast<py::tuple>(pyArgAnnotations[i]);
+    for (auto iterator : pyArgAnnotations[i])
+    llvm::errs() << "tuple of pyArgAnnotations[" << i << "] = " << iterator.attr("__str__")().cast<std::string>()  << "\n"; 
     auto shape = tuple[0];
     auto dtype = tuple[1];
     auto hasValueSemantics = tuple[2];
@@ -213,6 +215,7 @@ void ClassAnnotator::annotateArgs(c10::ClassType &rootClassType,
   const std::vector<torch::jit::Function *> &methods = classType->methods();
   for (int i = 0, e = methods.size(); i != e; i++) {
     if (methods[i]->name() == path.back()) {
+      llvm::errs() << "methods[" << i << "]->name() = " << methods[i]->name() << "\n";
       fillArgAnnotations(methodAnnotations[i], argAnnotations, function);
     }
   }
@@ -223,7 +226,7 @@ void ClassAnnotator::annotateArgs(c10::ClassType &rootClassType,
 c10::ClassType *ClassAnnotator::getClassAtPath(c10::ClassType *rootClassType,
                                                std::vector<std::string> path) {
   c10::ClassType *classType = rootClassType;
-  llvm::errs() << "HEY: " << classType;
+  llvm::errs() << "classType = " << classType << "\n";
   // Reverse so that pop_back gives us the initial atoms first.
   std::reverse(path.begin(), path.end());
   while (!path.empty()) {
