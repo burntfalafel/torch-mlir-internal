@@ -24,6 +24,8 @@
 #include "ATen/native/quantized/packed_params.h"
 #include "caffe2/core/scope_guard.h"
 
+#include "torchmlir_debugger.h"
+
 using namespace torch_mlir;
 
 // Hashing functionality for IValue's.
@@ -175,6 +177,7 @@ MlirValue IValueImporter::importModule(torch::jit::Module currentModule) {
   MlirRegion nnModuleRegion = mlirOperationGetRegion(nnModule, 0);
   mlirRegionAppendOwnedBlock(nnModuleRegion, mlirBlockCreate(0, nullptr, nullptr));
   MlirBlock nnModuleBody = mlirRegionGetFirstBlock(nnModuleRegion);
+  // printLLVMError<MlirOperation>(&mlirOperationPrint,nnModule, "<importModule>nnModuleOp: " );
   auto inserter = caffe2::MakeGuard([&]() {
     mlirBlockInsertOwnedOperationBefore(
         importBlock, mlirBlockGetTerminator(importBlock), nnModule);
@@ -192,6 +195,7 @@ MlirValue IValueImporter::importModule(torch::jit::Module currentModule) {
   for (int i = 0, e = slots.size(); i < e; i++) {
     const c10::ClassAttribute &classAttribute = classAttributes[i];
     attributeNameStack.push_back(classAttribute.getName());
+    // llvm::errs() << "<importModule>classAttribute.getName(): " << classAttribute.getName() << "\n";
     MlirValue slotValue = importIValue(slots[i]);
     // TODO: Is it necessary to track whether an attribute is a "parameter"?
     createMlirOperationAtEnd(
@@ -200,6 +204,8 @@ MlirValue IValueImporter::importModule(torch::jit::Module currentModule) {
             "name", mlirStringAttrGet(
                         context, toMlirStringRef(classAttribute.getName()))));
     attributeNameStack.pop_back();
+    // printLLVMError<MlirBlock>(&mlirBlockPrint, nnModuleBody, "<importModule>nnModuleBody: ");
+  
   }
 
   if (rootModuleName.has_value()) {

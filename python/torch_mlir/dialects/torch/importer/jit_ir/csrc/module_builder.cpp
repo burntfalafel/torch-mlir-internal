@@ -20,7 +20,7 @@
 #include "mlir-c/Registration.h"
 #include "torch-mlir-c/Registration.h"
 
-#include <llvm/Support/raw_ostream.h>
+#include "torchmlir_debugger.h"
 
 namespace py = pybind11;
 using namespace torch_mlir;
@@ -146,19 +146,6 @@ ModuleBuilder::importFunction(torch::jit::StrongFunctionPtr function) {
   return function;
 }
 
-template <typename printType>
-void printLLVMError(void (*func)(printType, MlirStringCallback, void *),
-                    printType obj, std::string message) {
-  std::stringstream ss;
-  ss << message;
-  auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
-    auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
-    ssp->write(s.data, s.length);
-  };
-  func(obj, stringCallback, static_cast<void *>(&ss));
-  llvm::errs() << ss.str() << "\n";
-}
-
 void ModuleBuilder::importModule(torch::jit::Module jitModule,
                                  py::object maybeClassAnnotator) {
   ClassAnnotator dummyAnnotator;
@@ -195,9 +182,14 @@ void ModuleBuilder::importModule(torch::jit::Module jitModule,
 
   printLLVMError<MlirOperation>(&mlirOperationPrint,
                                 mlirModuleGetOperation(module),
-                                "mlirModuleGetOperation(): ");
+                                "mlirModuleGetOperation(module): ");
+  printLLVMError<MlirBlock>(&mlirBlockPrint,
+                                mlirModuleGetBody(module),
+                                "mlirModuleGetBody(module): ");
+  
   importIValue(jitModule._ivalue(), mlirModuleGetBody(module),
                mlirModuleGetContext(module), *classAnnotator);
+
 }
 
 MlirBlock ModuleBuilder::getBodyBlock() {
