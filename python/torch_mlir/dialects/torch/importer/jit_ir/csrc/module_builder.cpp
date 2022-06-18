@@ -126,14 +126,13 @@ ModuleBuilder::ModuleBuilder(pybind11::object contextObj)
   // Terminator will always be the first op of an empty module.
   terminator = mlirBlockGetFirstOperation(getBodyBlock());
   if (mlirOperationIsNull(terminator) == false) {
-  std::stringstream ss;
-  ss << "error: ";
-  auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
-    auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
-    ssp->write(s.data, s.length);
-  };
-  emitError() << "Hello";
-  mlirOperationPrint(terminator, stringCallback, static_cast<void *>(&ss));
+    std::stringstream ss;
+    ss << "error: ";
+    auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
+      auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
+      ssp->write(s.data, s.length);
+    };
+    mlirOperationPrint(terminator, stringCallback, static_cast<void *>(&ss));
   }
   // llvm::errs() << "terminator value: " << terminator. << "\n";
 }
@@ -145,6 +144,19 @@ ModuleBuilder::importFunction(torch::jit::StrongFunctionPtr function) {
   MlirOperation func = importJitFunctionAsFuncOp(context, function.function_);
   mlirBlockInsertOwnedOperationBefore(block, terminator, func);
   return function;
+}
+
+template <typename printType>
+void printLLVMError(void (*func)(printType, MlirStringCallback, void *),
+                    printType obj, std::string message) {
+  std::stringstream ss;
+  ss << message;
+  auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
+    auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
+    ssp->write(s.data, s.length);
+  };
+  func(obj, stringCallback, static_cast<void *>(&ss));
+  llvm::errs() << ss.str() << "\n";
 }
 
 void ModuleBuilder::importModule(torch::jit::Module jitModule,
@@ -177,14 +189,13 @@ void ModuleBuilder::importModule(torch::jit::Module jitModule,
   mlirOperationSetAttributeByName(mlirModuleGetOperation(module),
                                   toMlirStringRef("torch.debug_module_name"),
                                   debugModuleNameAttr);
-  std::stringstream ss;
-  ss << "error: ";
-  auto stringCallback = [](MlirStringRef s, void *stringCallbackUserData) {
-    auto *ssp = static_cast<std::stringstream *>(stringCallbackUserData);
-    ssp->write(s.data, s.length);
-  };
-  mlirAttributePrint(debugModuleNameAttr, stringCallback, static_cast<void *>(&ss));
-  
+
+  printLLVMError<MlirAttribute>(&mlirAttributePrint, debugModuleNameAttr,
+                                "debugModuleNameAttr: ");
+
+  printLLVMError<MlirOperation>(&mlirOperationPrint,
+                                mlirModuleGetOperation(module),
+                                "mlirModuleGetOperation(): ");
   importIValue(jitModule._ivalue(), mlirModuleGetBody(module),
                mlirModuleGetContext(module), *classAnnotator);
 }
