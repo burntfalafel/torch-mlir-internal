@@ -28,6 +28,9 @@
 
 using namespace torch_mlir;
 
+// global static variable maintains the recursion state
+static int recursionState = 0;
+
 // Hashing functionality for IValue's.
 //
 // What we want here is a strict object identity hash. This is different from
@@ -222,6 +225,10 @@ MlirValue IValueImporter::importModule(torch::jit::Module currentModule) {
 }
 
 MlirValue IValueImporter::importIValue(c10::IValue ivalue) {
+  if(recursionState>=1 || ivalue.isCustomClass()){
+    ivalue = "None"; 
+    recursionState = 0;
+  }
   auto it = valueMap.find(ivalue);
   // ivalue.dump();
   if (it != valueMap.end()) {
@@ -251,6 +258,7 @@ MlirValue IValueImporter::importIValue(c10::IValue ivalue) {
 MlirValue IValueImporter::rawImportIValue(c10::IValue ivalue) {
   // TODO: Can we do better?
   MlirLocation loc = mlirLocationUnknownGet(context);
+  recursionState++; // recursion variable update
 
   if (ivalue.isBool()) {
     MlirType type = torchMlirTorchBoolTypeGet(context);
@@ -281,9 +289,9 @@ MlirValue IValueImporter::rawImportIValue(c10::IValue ivalue) {
   if (ivalue.isList()) {
     c10::List<c10::IValue> list = ivalue.toList();
     std::vector<MlirValue> elems;
-    for (const c10::IValue &elem : list) {
-      elems.push_back(importIValue(elem));
-    }
+    // for (const c10::IValue &elem : list) {
+    //   elems.push_back(importIValue(elem));
+    // }
     MlirOperation operation = createMlirOperationAtEnd(
         importBlock, "torch.prim.ListConstruct", loc,
         torchMlirTorchListTypeGet(
@@ -295,10 +303,10 @@ MlirValue IValueImporter::rawImportIValue(c10::IValue ivalue) {
     c10::Dict<c10::IValue, c10::IValue> dict = ivalue.toGenericDict();
     std::vector<MlirValue> keys;
     std::vector<MlirValue> values;
-    for (auto it = dict.begin(); it != dict.end(); it++) {
-      keys.push_back(importIValue(it->key()));
-      values.push_back(importIValue(it->value()));
-    }
+    // for (auto it = dict.begin(); it != dict.end(); it++) {
+    //   keys.push_back(importIValue(it->key()));
+    //   values.push_back(importIValue(it->value()));
+    // }
     MlirOperation operation = createMlirOperationAtEnd(
         importBlock, "torch.prim.DictConstruct", loc,
         torchMlirTorchDictTypeGet(
@@ -311,11 +319,11 @@ MlirValue IValueImporter::rawImportIValue(c10::IValue ivalue) {
     auto list = ivalue.toTuple()->elements();
     std::vector<MlirValue> operands;
     std::vector<MlirType> types;
-    for (const c10::IValue &elem : list) {
-      MlirValue operand = importIValue(elem);
-      operands.push_back(operand);
-      types.push_back(mlirValueGetType(operand));
-    }
+    // for (const c10::IValue &elem : list) {
+    //   MlirValue operand = importIValue(elem);
+    //   operands.push_back(operand);
+    //   types.push_back(mlirValueGetType(operand));
+    // }
     MlirOperation operation = createMlirOperationAtEnd(
         importBlock, "torch.prim.TupleConstruct", loc,
         torchMlirTorchTupleTypeGet(context, types.size(), types.data()),
