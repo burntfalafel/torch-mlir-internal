@@ -203,6 +203,11 @@ MlirValue IValueImporter::importModule(torch::jit::Module currentModule) {
         toMlirNamedAttribute(
             "name", mlirStringAttrGet(
                         context, toMlirStringRef(classAttribute.getName()))));
+    // llvm::errs() << mlirIdentifierStr(toMlirNamedAttribute(
+    //         "name", mlirStringAttrGet(
+    //                     context, toMlirStringRef(classAttribute.getName()))).name).data << "\n";
+    // printLLVMError<MlirValue>(&mlirValuePrint, slotValue, "<importModule>slotValue: ");
+    // printLLVMError<MlirLocation>(&mlirLocationPrint, loc, "<importModule>loc: ");
     attributeNameStack.pop_back();
     // printLLVMError<MlirBlock>(&mlirBlockPrint, nnModuleBody, "<importModule>nnModuleBody: ");
   
@@ -218,8 +223,10 @@ MlirValue IValueImporter::importModule(torch::jit::Module currentModule) {
 
 MlirValue IValueImporter::importIValue(c10::IValue ivalue) {
   auto it = valueMap.find(ivalue);
+  // ivalue.dump();
   if (it != valueMap.end()) {
     return it->second;
+    printLLVMError<MlirValue>(&mlirValuePrint, it->second, "<importValue>it->second: ");
   }
   // Reject potentially aliased tensors.
   if (ivalue.isTensor()) {
